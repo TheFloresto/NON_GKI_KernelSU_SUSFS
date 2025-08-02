@@ -28,7 +28,7 @@
      matrix:
       kernel_config:
        - kernel_name: "SM6125"
-         kernel_url: "https://github.com/LineageOS/android_kernel_xiaomi_sm6125"
+         kernel_url: "https://github.com/LineageOS/android_kernel_google_msm-4.14"
          anykernel_branch: "sm6125"
          tag: "SM6125-22.2"
          defconfig: "vendor/trinket-perf_defconfig"
@@ -36,39 +36,8 @@
          patches_folder: "sm6125"
          IN_DTBO: "out/arch/arm64/boot/dts/xiaomi/laurel_sprout-trinket-overlay.dtbo"
 
-       - kernel_name: "SM6125 - Ginkgo"
-         device: Ginkgo
-         kernel_url: "https://github.com/LineageOS/android_kernel_xiaomi_sm6125"
-         anykernel_branch: "ginkgo"
-         tag: "SM6125-22.2"
-         defconfig: "vendor/trinket-perf_defconfig"
-         config: "vendor/xiaomi-trinket.config vendor/ginkgo.config"
-         patches_folder: "sm6125"
-         IN_DTBO: "out/arch/arm64/boot/dts/xiaomi/ginkgo-trinket-overlay.dtbo"
-
-       - kernel_name: "Snowflake"
-         kernel_url: "https://github.com/liquidprjkt/snowflake_laurel_sprout"
-         kernel_branch: "snowflake_noname"
-         tag: "Snowflake"
-         defconfig: "vendor/laurel_sprout-perf_defconfig"
-
-       - kernel_name: "N18.1"
-         kernel_url: "https://github.com/TheSillyOk/kernel_laurel_sprout" 
-         kernel_branch: "lineage-18.1"
-         tag: "NoName-18.1"
-         python3_patch: true
-
-       - kernel_name: "N-VIC"
-         kernel_url: "https://github.com/TheSillyOk/kernel_laurel_sprout" 
-         kernel_branch: "vic"
-         tag: "NoName-VIC"
-         python3_patch: true
-
-      build_type: ["Normal", "KSUN", "RKSU"]
-      susfs: [false, true]
-      exclude:
-           - build_type: "Normal"
-             susfs: true
+      build_type: ["KSUN"]
+      susfs: [true]
     permissions:
       contents: write
     steps:
@@ -190,7 +159,7 @@
       - name: Set up ccache
         run: |
          ccache --version
-         ccache --max-size=2G
+         ccache --max-size=3G
          ccache --set-config=compression=true
          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
@@ -569,3 +538,4 @@
             
             • KernelSU-Next (KSUN) [${{ env.KSUN_V }}](${{ env.KSUN_URL }})
             • Rissu's KernelSU (RKSU) [${{ env.RKSU_V }}](${{ env.RKSU_URL }})"
+            
