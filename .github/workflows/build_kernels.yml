@@ -1,5 +1,6 @@
- name: Kernel Build
- on:
+name: Kernel Build
+
+on:
   workflow_dispatch:
     inputs:
       pre_release:
@@ -20,103 +21,75 @@
       - 'README.md'
     branches:
       - test
- jobs:
+
+jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-     fail-fast: false
-     matrix:
-      kernel_config:
-       - kernel_name: "SM6125"
-         kernel_url: "https://github.com/LineageOS/android_kernel_xiaomi_sm6125"
-         anykernel_branch: "sm6125"
-         tag: "SM6125-22.2"
-         defconfig: "vendor/trinket-perf_defconfig"
-         config: "vendor/xiaomi-trinket.config vendor/laurel_sprout.config"
-         patches_folder: "sm6125"
-         IN_DTBO: "out/arch/arm64/boot/dts/xiaomi/laurel_sprout-trinket-overlay.dtbo"
+      fail-fast: false
+      matrix:
+        kernel_config:
+          - kernel_name: "SM6125"
+            kernel_url: "https://github.com/LineageOS/android_kernel_xiaomi_sm6125"
+            anykernel_branch: "sm6125"
+            tag: "SM6125-22.2"
+            defconfig: "vendor/trinket-perf_defconfig"
+            config: "vendor/xiaomi-trinket.config vendor/laurel_sprout.config"
+            patches_folder: "sm6125"
+            IN_DTBO: "out/arch/arm64/boot/dts/xiaomi/laurel_sprout-trinket-overlay.dtbo"
+          - kernel_name: "SM6125 - Ginkgo"
+            device: Ginkgo
+            kernel_url: "https://github.com/LineageOS/android_kernel_xiaomi_sm6125"
+            anykernel_branch: "ginkgo"
+            tag: "SM6125-22.2"
+            defconfig: "vendor/trinket-perf_defconfig"
+            config: "vendor/xiaomi-trinket.config vendor/ginkgo.config"
+            patches_folder: "sm6125"
+            IN_DTBO: "out/arch/arm64/boot/dts/xiaomi/ginkgo-trinket-overlay.dtbo"
+          - kernel_name: "Snowflake"
+            kernel_url: "https://github.com/liquidprjkt/snowflake_laurel_sprout"
+            kernel_branch: "snowflake_noname"
+            tag: "Snowflake"
+            defconfig: "vendor/laurel_sprout-perf_defconfig"
+          - kernel_name: "N18.1"
+            kernel_url: "https://github.com/TheSillyOk/kernel_laurel_sprout"
+            kernel_branch: "lineage-18.1"
+            tag: "NoName-18.1"
+            python3_patch: true
+          - kernel_name: "N-VIC"
+            kernel_url: "https://github.com/TheSillyOk/kernel_laurel_sprout"
+            kernel_branch: "vic"
+            tag: "NoName-VIC"
+            python3_patch: true
+        build_type: ["Normal", "KSU", "RKSU", "KSUN"]
+        susfs: [false, true]
+        exclude:
+          - build_type: "Normal"
+            susfs: true
 
-       - kernel_name: "SM6125 - Ginkgo"
-         device: Ginkgo
-         kernel_url: "https://github.com/LineageOS/android_kernel_xiaomi_sm6125"
-         anykernel_branch: "ginkgo"
-         tag: "SM6125-22.2"
-         defconfig: "vendor/trinket-perf_defconfig"
-         config: "vendor/xiaomi-trinket.config vendor/ginkgo.config"
-         patches_folder: "sm6125"
-         IN_DTBO: "out/arch/arm64/boot/dts/xiaomi/ginkgo-trinket-overlay.dtbo"
-
-       - kernel_name: "Snowflake"
-         kernel_url: "https://github.com/liquidprjkt/snowflake_laurel_sprout"
-         kernel_branch: "snowflake_noname"
-         tag: "Snowflake"
-         defconfig: "vendor/laurel_sprout-perf_defconfig"
-
-       - kernel_name: "N18.1"
-         kernel_url: "https://github.com/TheSillyOk/kernel_laurel_sprout" 
-         kernel_branch: "lineage-18.1"
-         tag: "NoName-18.1"
-         python3_patch: true
-
-       - kernel_name: "N-VIC"
-         kernel_url: "https://github.com/TheSillyOk/kernel_laurel_sprout" 
-         kernel_branch: "vic"
-         tag: "NoName-VIC"
-         python3_patch: true
-
-      build_type: ["Normal", "KSUN", "RKSU"]
-      susfs: [false, true]
-      exclude:
-           - build_type: "Normal"
-             susfs: true
     permissions:
       contents: write
+
     steps:
-      - name: Output configs
-        id: variable
+      - name: Set Environment Variables
+        id: vars
         run: |
-
-          set_config() {
-            local name="$1"
-            local default_value="$2"
-            local value="$3"
-
-            if [[ "$name" == *"branch"* && "$value" == *"-b " ]]; then
-              echo "$name=$default_value" >> $GITHUB_ENV
-              echo "$name -> \"$default_value\""
-            else
-             if [ -z "$value" ]; then
-              echo "$name=$default_value" >> $GITHUB_ENV
-              echo "$name -> \"$default_value\""
-             else
-               echo "$name=$value" >> $GITHUB_ENV
-               echo "$name -> \"$value\""
-             fi
-            fi
-          }
-
-          set_config "defconfig" "vendor/laurel_sprout-perf_defconfig" "${{ matrix.kernel_config.defconfig }}"
-          set_config "config" "${{ matrix.kernel_config.config }}"
-
-          set_config "patches_url" "https://github.com/TheSillyOk/kernel_ls_patches" "${{ matrix.kernel_config.patches_url }}"
-          set_config "patches_branch" "" " -b ${{ matrix.kernel_config.patches_branch }}"
-          set_config "patches_folder" "noname" "${{ matrix.kernel_config.patches_folder }}"
-
-          set_config "anykernel_url" "https://github.com/TheSillyOk/anykernel" "${{ matrix.kernel_config.anykernel_url }}"
-          set_config "anykernel_branch" "" " -b ${{ matrix.kernel_config.anykernel_branch }}"
-
-          set_config "kernel_branch" "" " -b ${{ matrix.kernel_config.kernel_branch }}"
-
-          set_config "susfs_branch" "kernel-4.14" "${{ matrix.kernel_config.susfs_branch }}"
-          set_config "device" "MiA3" "${{ matrix.kernel_config.device }}"
-          set_config "python3" false "${{ matrix.kernel_config.python3_patch }}"
-
-          set_config "IN_DTBO" "none" "${{ matrix.kernel_config.IN_DTBO }}"
-
+          echo "defconfig=${{ matrix.kernel_config.defconfig || 'vendor/laurel_sprout-perf_defconfig' }}" >> $GITHUB_ENV
+          echo "config=${{ matrix.kernel_config.config }}" >> $GITHUB_ENV
+          echo "patches_url=${{ matrix.kernel_config.patches_url || 'https://github.com/TheSillyOk/kernel_ls_patches' }}" >> $GITHUB_ENV
+          echo "patches_branch_arg=${{ matrix.kernel_config.patches_branch && format('-b {0}', matrix.kernel_config.patches_branch) || '' }}" >> $GITHUB_ENV
+          echo "patches_folder=${{ matrix.kernel_config.patches_folder || 'noname' }}" >> $GITHUB_ENV
+          echo "anykernel_url=${{ matrix.kernel_config.anykernel_url || 'https://github.com/TheSillyOk/anykernel' }}" >> $GITHUB_ENV
+          echo "anykernel_branch_arg=${{ matrix.kernel_config.anykernel_branch && format('-b {0}', matrix.kernel_config.anykernel_branch) || '' }}" >> $GITHUB_ENV
+          echo "kernel_branch_arg=${{ matrix.kernel_config.kernel_branch && format('-b {0}', matrix.kernel_config.kernel_branch) || '' }}" >> $GITHUB_ENV
+          echo "susfs_branch=${{ matrix.kernel_config.susfs_branch || 'kernel-4.14' }}" >> $GITHUB_ENV
+          echo "device=${{ matrix.kernel_config.device || 'MiA3' }}" >> $GITHUB_ENV
+          echo "python3=${{ matrix.kernel_config.python3_patch || 'false' }}" >> $GITHUB_ENV
+          echo "in_dtbo=${{ matrix.kernel_config.IN_DTBO || 'none' }}" >> $GITHUB_ENV
 
       - name: Maximize Build Space
-        continue-on-error: true
         uses: AdityaGarg8/remove-unwanted-software@v5
+        continue-on-error: true
         with:
           remove-dotnet: 'true'
           remove-android: 'true'
@@ -125,46 +98,14 @@
           remove-docker-images: 'true'
           remove-large-packages: 'true'
           remove-swapfile: 'true'
-          remove-cached-tools: 'false'
-          verbose: 'true'
 
-      - name: Initialize workspace and tools
-        id: workspace
+      - name: Initialize Workspace and Install Tools
         run: |
-          set -e
-
-          WORKSPACE_FOLDER="${GITHUB_WORKSPACE}/workspace"
-          echo "workspace_folder=$WORKSPACE_FOLDER" >> $GITHUB_ENV
-          mkdir -p "$WORKSPACE_FOLDER"
-
-          sudo apt-get update -y -qq
-          sudo apt-get install -y --no-install-recommends \
-            python3-pip \
-            git \
-            zip \
-            unzip \
-            gcc \
-            g++ \
-            make \
-            ninja-build \
-            file \
-            bc \
-            bison \
-            flex \
-            libfl-dev \
-            libssl-dev \
-            libelf-dev \
-            wget \
-            build-essential \
-            python3-dev \
-            python3-setuptools \
-            rsync \
-            ccache \
-            llvm-dev
-
-          sudo apt install libncurses6 libfdt-dev
-          sudo sh -c "curl -L https://raw.githubusercontent.com/kadwanev/retry/master/retry -o /usr/local/bin/retry && chmod +x /usr/local/bin/retry"
-          echo "tools_folder=$WORKSPACE_FOLDER" >> $GITHUB_ENV
+          echo "workspace_folder=${GITHUB_WORKSPACE}/workspace" >> $GITHUB_ENV
+          mkdir -p "${GITHUB_WORKSPACE}/workspace"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends python3-pip git zip unzip gcc g++ make ninja-build file bc bison flex libfl-dev libssl-dev libelf-dev wget build-essential python3-dev python3-setuptools rsync ccache llvm-dev libncurses6 libfdt-dev
+          sudo curl -L https://raw.githubusercontent.com/kadwanev/retry/master/retry -o /usr/local/bin/retry && sudo chmod +x /usr/local/bin/retry
 
       - name: Cache Clang
         uses: actions/cache@v4
@@ -172,317 +113,202 @@
         with:
           path: ${{ env.workspace_folder }}/clang
           key: clang-r547379-ubuntu-latest
-          restore-keys: |
-            clang-r547379-ubuntu-latest
-            clang-r547379-
 
       - name: Download and Extract Clang
         if: steps.cache-clang.outputs.cache-hit != 'true'
         working-directory: ${{ env.workspace_folder }}
         run: |
-          set -e
-          echo "Downloading and extracting clang..."
           retry -t 3 -s 5 "wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r547379.tar.gz -O clang.tar.gz"
-          mkdir -p clang
-          tar -xf clang.tar.gz -C clang
-          echo "Clang downloaded and extracted."
+          mkdir -p clang && tar -xf clang.tar.gz -C clang
 
       - name: Set up ccache
         run: |
-         ccache --version
-         ccache --max-size=2G
-         ccache --set-config=compression=true
-         echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+          ccache --max-size=2G
+          ccache --set-config=compression=true
+          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
-      - name: Cache kernel build
+      - name: Cache Kernel Build
         uses: actions/cache@v4
         with:
-         path: ~/.ccache
-         key: ${{ env.device }}-${{ matrix.build_type }}-${{ matrix.kernel_config.tag }}-SUSFS_${{ matrix.susfs }}-ccache-${{ github.sha }}-${{ github.run_number }}
-         restore-keys: |
-           ${{ env.device }}-${{ matrix.build_type }}-${{ matrix.kernel_config.tag }}-SUSFS_${{ matrix.susfs }}-ccache-${{ github.sha }}
-           ${{ env.device }}-${{ matrix.build_type }}-${{ matrix.kernel_config.tag }}-SUSFS_${{ matrix.susfs }}-ccache-
-           ${{ matrix.build_type }}-${{ matrix.kernel_config.tag }}-SUSFS_${{ matrix.susfs }}-ccache
-           ${{ matrix.build_type }}-${{ matrix.kernel_config.tag }}-
-           ${{ env.device }}-${{ matrix.kernel_config.tag }}-
-           -${{ matrix.kernel_config.tag }}-
+          path: ~/.ccache
+          key: ${{ env.device }}-${{ matrix.build_type }}-${{ matrix.kernel_config.tag }}-SUSFS_${{ matrix.susfs }}-ccache-${{ github.sha }}-${{ github.run_number }}
+          restore-keys: |
+            ${{ env.device }}-${{ matrix.build_type }}-${{ matrix.kernel_config.tag }}-SUSFS_${{ matrix.susfs }}-ccache-${{ github.sha }}
+            ${{ env.device }}-${{ matrix.build_type }}-${{ matrix.kernel_config.tag }}-SUSFS_${{ matrix.susfs }}-ccache-
 
-      - name: Preparing kernel
-        id: kernel
+      - name: Prepare Kernel Source
         run: |
           set -e
+          echo "kernel_folder=${{ env.workspace_folder }}/kernel_tree" >> $GITHUB_ENV
+          git clone --depth=1 "${{ matrix.kernel_config.kernel_url }}" ${{ env.kernel_branch_arg }} "${{ env.workspace_folder }}/kernel_tree"
+          
+          echo "patches_dir=${{ env.workspace_folder }}/kernel_patches" >> $GITHUB_ENV
+          git clone --depth=1 "${{ env.patches_url }}" ${{ env.patches_branch_arg }} "${{ env.workspace_folder }}/kernel_patches"
 
-          KERNEL_FOLDER="${{ env.workspace_folder }}/kernel_tree"
-          echo "kernel_folder=$KERNEL_FOLDER" >> $GITHUB_ENV
-          git clone --depth=1 "${{ matrix.kernel_config.kernel_url }}"${{ env.kernel_branch }} "$KERNEL_FOLDER"
-          cd "$KERNEL_FOLDER"
+          cd "${{ env.workspace_folder }}/kernel_tree"
+          if ${{ env.python3 }}; then
+            patch -p1 -F 3 -N < "${{ env.workspace_folder }}/kernel_patches/python3.patch" || true
+          fi
+          
+          for patch_name in fix_lto ptrace_fix; do
+            patch -p1 < "${{ env.workspace_folder }}/kernel_patches/${patch_name}.patch" || true
+          done
 
-          PATCHES_FOLDER="${{ env.workspace_folder }}/kernel_patches"
-          echo "patches_dir=$PATCHES_FOLDER" >> $GITHUB_ENV
-          git clone --depth=1 "${{ env.patches_url }}"${{ env.patches_branch }} "$PATCHES_FOLDER"
+          sed -i 's/-dirty//' ./scripts/setlocalversion
+          sed -i -E 's/^(CONFIG_LOCALVERSION=.*)/\1-Ok/gi' "arch/arm64/configs/${{ env.defconfig }}"
+          sed -i -E 's/^CONFIG_(LTO[^=]*|HAVE_LTO[^=]*|CC_OPTIMIZE_FOR[^=]*|MODVERSIONS)=(y|n)/# CONFIG_\1=\2/g' "arch/arm64/configs/${{ env.defconfig }}"
+          echo -e "\n\n# Workflow added configs #\nCONFIG_LTO_CLANG=y\nCONFIG_LTO_CLANG_THIN=y\nCONFIG_HAVE_LTO_CLANG=y\nCONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y\nCONFIG_MODVERSIONS=n" >> "arch/arm64/configs/${{ env.defconfig }}"
 
-           if ${{ env.python3 }}; then
-             echo "--- Applying python3.patch... ---"
-             patch -p1 -F 3 -N < "$PATCHES_FOLDER/python3.patch" || true
-           fi
-
-           echo "--- Applying fix_lto.patch... ---"
-           patch -p1 < "$PATCHES_FOLDER/fix_lto.patch" || true
-
-           echo "--- Applying ptrace_fix.patch... ---"
-           patch -p1 < "$PATCHES_FOLDER/ptrace_fix.patch" || true
-
-           sed -i 's/-dirty//' ./scripts/setlocalversion
-           sed -i -E 's/^(CONFIG_LOCALVERSION=.*)/\1-Ok/gi' "arch/arm64/configs/${{ env.defconfig }}"
-           sed -i -E 's/^CONFIG_(LTO[^=]*|HAVE_LTO[^=]*|CC_OPTIMIZE_FOR[^=]*|MODVERSIONS)=(y|n)/# CONFIG_\1=\2/g' "arch/arm64/configs/${{ env.defconfig }}" && echo -e "\n\n# Workflow added configs #\nCONFIG_LTO_CLANG=y\nCONFIG_LTO_CLANG_THIN=y\nCONFIG_HAVE_LTO_CLANG=y\nCONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y\nCONFIG_MODVERSIONS=n" >> "arch/arm64/configs/${{ env.defconfig }}"
-
-      - name: Apply KernelSU
-        if: ${{ matrix.build_type != 'Normal' }}
-        id: ksu
+      - name: Apply KernelSU / Forks
+        if: matrix.build_type != 'Normal'
+        working-directory: ${{ env.kernel_folder }}
         run: |
           set -e
-
-          cd "${{ env.kernel_folder }}"
-
-          echo "--- Setting up KernelSU: ${{ matrix.build_type }} ---"
-          case "${{ matrix.build_type }}-${{ matrix.susfs }}" in
-           KSU-*)
-            curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/path_unmount.patch" || true
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/get_cred_rcu.patch"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/strncpy_from_user_nofault.patch"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/KSUN/scope_min_manual_hooks_v1.4.patch"
-            cd KernelSU
-           ;;
-           KSUN-*)
-            curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/KSUN/syscall_hooks.patch"
-            cd KernelSU-Next
-           ;;
-           RKSU-false)
-            curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/path_unmount.patch"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/get_cred_rcu.patch"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/strncpy_from_user_nofault.patch"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/KSUN/syscall_hooks.patch"
-            cd KernelSU
-           ;;
-           RKSU-true)
-            curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/path_unmount.patch"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/get_cred_rcu.patch"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/strncpy_from_user_nofault.patch"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/KSUN/syscall_hooks.patch"
-            cd KernelSU
-           ;;
-           *)
-            echo "Invalid selection for build_type and/or susfs: ${{ matrix.build_type }}-${{ matrix.susfs }}"
-           ;;
-          esac
-          echo "--- ${{ matrix.build_type }} setup complete ---"
-           cd ${{ env.kernel_folder }}
-
-          # Append configuration settings to the defconfig file
-           sed -i -E 's/^CONFIG_(KPROBES|TMPFS_XATTR|KSU[^=]*)=(y|n)/# CONFIG_\1=\2/g' "arch/arm64/configs/${{ env.defconfig }}"
-           echo -e "\nCONFIG_KPROBES=n\nCONFIG_KSU=y\nCONFIG_TMPFS_XATTR=y\n" >> "arch/arm64/configs/${{ env.defconfig }}"
-
-      - name: Apply SUSFS
-        if: ${{ matrix.susfs }}
-        id: susfs
-        run: |
-          set -e
-
-          SUSFS_FOLDER="${{ env.workspace_folder }}/susfs4ksu"
-          SUSFS_PATCHES="$SUSFS_FOLDER/kernel_patches"
-          echo "susfs_patches=$SUSFS_PATCHES" >> $GITHUB_ENV
-          # git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b "${{ env.susfs_branch }}" "$SUSFS_FOLDER"
-
-          cd "${{ env.kernel_folder }}"
-          echo "--- Applying SUSFS Patches for ${{ matrix.build_type }} ---"
           case "${{ matrix.build_type }}" in
             KSU)
-             echo "--- Applying 50_add_susfs.patch... ---"
-             patch -p1 -F 3 -N < "$SUSFS_PATCHES/50_add_susfs_in_${{ env.susfs_branch }}.patch" || true
-             echo "--- Applying fix_susfs_rejects.patch... ---"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/${{ env.patches_folder }}/fix_susfs_rejects.patch" || true
-             cp -r $SUSFS_PATCHES/fs/* ${{ env.kernel_folder }}/fs/
-             cp -r $SUSFS_PATCHES/include/linux/* ${{ env.kernel_folder }}/include/linux
-             cd KernelSU
-             echo "--- Applying 10_enable_susfs_for_ksu.patch ---"
-             patch -p1 -F 3 -N < "$SUSFS_PATCHES/KernelSU/10_enable_susfs_for_ksu.patch"
-            ;;
-            RKSU)
-             echo "--- Applying susfs-1.5.9.patch ---"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/susfs-1.5.9.patch" || true
-             cd KernelSU
-             echo "--- Applying RKSU-SUSFS-1.5.9.patch ---"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/RKSU/RKSU-SUSFS-1.5.9.patch"
-            ;;
+              curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+              for patch_name in path_unmount get_cred_rcu strncpy_from_user_nofault ${{ env.patches_folder }}/manual_hooks; do
+                patch -p1 -F 3 -N < "${{ env.patches_dir }}/${patch_name}.patch"
+              done
+              ;;
             KSUN)
-             echo "--- Applying susfs-1.5.9.patch ---"
-             patch -p1 -F 3 -N < "${{ env.patches_dir }}/susfs-1.5.9.patch" || true
-             cd ./KernelSU-Next
-             echo "--- KSUN-SUSFS-1.5.9.patch ---"
-             patch -p1 --forward --fuzz=3 < ${{ env.patches_dir }}/KSUN/KSUN-SUSFS-1.5.9.patch
-            ;;
+              curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
+              patch -p1 -F 3 -N < "${{ env.patches_dir }}/KSUN/syscall_hooks.patch"
+              ;;
+            RKSU)
+              curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s main
+              for patch_name in path_unmount get_cred_rcu strncpy_from_user_nofault KSUN/syscall_hooks; do
+                patch -p1 -F 3 -N < "${{ env.patches_dir }}/${patch_name}.patch"
+              done
+              ;;
           esac
-          cd ${{ env.kernel_folder }}
-          echo "--- SUSFS Patches applied ---"
 
-      - name: Building kernel
-        id: build
+          sed -i -E 's/^CONFIG_(KPROBES|TMPFS_XATTR|KSU[^=]*)=(y|n)/# CONFIG_\1=\2/g' "arch/arm64/configs/${{ env.defconfig }}"
+          echo -e "\nCONFIG_KPROBES=n\nCONFIG_KSU=y\nCONFIG_TMPFS_XATTR=y\n" >> "arch/arm64/configs/${{ env.defconfig }}"
+
+      - name: Apply SUSFS
+        if: matrix.susfs
+        working-directory: ${{ env.kernel_folder }}
         run: |
           set -e
-          cd ${{ env.kernel_folder }}
+          SUSFS_FOLDER="${{ env.workspace_folder }}/susfs4ksu"
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b "${{ env.susfs_branch }}" "$SUSFS_FOLDER"
 
-          EXTRA=" DTC_PREBUILT=true DTC=${{ env.kernel_folder }}/extra/dtc DTC_OVERLAY_TEST_EXT=${{ env.kernel_folder }}/extra/ufdt_apply_overlay MKDTIMG=${{ env.kernel_folder }}/extra/mkdtimg"
-          git clone --depth=1 https://github.com/TheSillyOk/kernel_extra -b main extra
+          case "${{ matrix.build_type }}" in
+            KSU)
+              patch -p1 -F 3 -N < "$SUSFS_FOLDER/kernel_patches/50_add_susfs_in_${{ env.susfs_branch }}.patch" || true
+              patch -p1 -F 3 -N < "${{ env.patches_dir }}/${{ env.patches_folder }}/fix_susfs_rejects.patch" || true
+              cp -r $SUSFS_FOLDER/kernel_patches/fs/* fs/
+              cp -r $SUSFS_FOLDER/kernel_patches/include/linux/* include/linux
+              cd KernelSU
+              patch -p1 -F 3 -N < "$SUSFS_FOLDER/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
+              ;;
+            RKSU|KSUN)
+              patch -p1 -F 3 -N < "${{ env.patches_dir }}/susfs-1.5.9.patch" || true
+              cd KernelSU*
+              patch -p1 -F 3 -N < "${{ env.patches_dir }}/${{ matrix.build_type }}/${{ matrix.build_type }}-SUSFS-1.5.9.patch"
+              ;;
+          esac
+
+      - name: Build Kernel
+        working-directory: ${{ env.kernel_folder }}
+        run: |
+          set -e
+
+          EXTRA_FOLDER="${{ env.kernel_folder }}/extra"
+          git clone --depth=1 https://github.com/TheSillyOk/kernel_extra -b main "$EXTRA_FOLDER"
 
           export CCACHE_EXEC=$(which ccache)
           export ARCH=arm64
           export SUBARCH=arm64
           export KBUILD_BUILD_USER="Ok"
           export KBUILD_BUILD_HOST="Github"
-          export PATH="${{ env.tools_folder }}/clang/bin:$PATH"
-           mkdir -p "${{ env.kernel_folder }}/out/arch/arm64/boot/dts/xiaomi/.ginkgo-trinket-overlay.dtbo.qcom-base"
-          mkdir -p "${{ env.kernel_folder }}/artifacts"
+          export PATH="${{ env.workspace_folder }}/clang/bin:$PATH"
+          
+          mkdir -p "out/arch/arm64/boot/dts/xiaomi/.ginkgo-trinket-overlay.dtbo.qcom-base"
+          
+          make O=out ARCH=arm64 ${{ env.defconfig }} ${{ env.config }}
+          make O=out DTC_PREBUILT=true DTC=$EXTRA_FOLDER/dtc DTC_OVERLAY_TEST_EXT=$EXTRA_FOLDER/ufdt_apply_overlay MKDTIMG=$EXTRA_FOLDER/mkdtimg CC="ccache clang" LD=ld.lld LLVM=1 LLVM_IAS=1 -j"$(nproc --all)" CROSS_COMPILE=aarch64-linux-gnu-
 
-          make O="${{ env.kernel_folder }}/out" ARCH=arm64 ${{ env.defconfig }} ${{ env.config }}
-          make O="${{ env.kernel_folder }}/out"$EXTRA CC="ccache clang" LD=ld.lld LLVM=1 LLVM_IAS=1 -j"$(nproc --all)" CROSS_COMPILE=aarch64-linux-gnu-
-
-      - name: Handle AnyKernel3 zips
+      - name: Create AnyKernel3 Zip
         id: anykernel
         run: |
           set -e
-
           BOOT_FOLDER="${{ env.kernel_folder }}/out/arch/arm64/boot"
-          cd "$BOOT_FOLDER"
-
-          git clone --recursive --depth=1 "${{ env.anykernel_url }}"${{ env.anykernel_branch }} "$BOOT_FOLDER/ak_folder"
-
-          if [ -e "$BOOT_FOLDER/Image.gz-dtb" ]; then
-            cp -f "$BOOT_FOLDER/Image.gz-dtb" "$BOOT_FOLDER/ak_folder"
-            echo "--- Added: Image.gz-dtb ---"
-          else
-
-           if [ -e "$BOOT_FOLDER/Image.gz" ]; then
-             cp -f "$BOOT_FOLDER/Image.gz" "$BOOT_FOLDER/ak_folder"
-             echo "--- Added: Image.gz ---"
-           fi
-
-          fi
-
+          AK3_FOLDER="$BOOT_FOLDER/ak_folder"
+          echo "ak_folder=$AK3_FOLDER" >> $GITHUB_ENV
+          git clone --recursive --depth=1 "${{ env.anykernel_url }}" ${{ env.anykernel_branch_arg }} "$AK3_FOLDER"
+          
+          cp -f "$BOOT_FOLDER/Image.gz-dtb" "$AK3_FOLDER" 2>/dev/null || cp -f "$BOOT_FOLDER/Image.gz" "$AK3_FOLDER"
+          
           if [ -e "$BOOT_FOLDER/dtbo.img" ]; then
-            cp -f "$BOOT_FOLDER/dtbo.img" "$BOOT_FOLDER/ak_folder"
-            echo "--- Added: dtbo.img ---"
-          elif [ "${{ env.IN_DTBO }}" != "none" ]; then
-            echo "--- Creating dtbo.img manually... ---"
-            python3 "${{ env.kernel_folder }}/extra/mkdtboimg.py" create "$BOOT_FOLDER/ak_folder/dtbo.img" --custom0=0x00000000 --custom1=0x00000000 --page_size=4096 "${{ env.kernel_folder }}/${{ env.IN_DTBO }}"
+            cp -f "$BOOT_FOLDER/dtbo.img" "$AK3_FOLDER"
+          elif [ "${{ env.in_dtbo }}" != "none" ]; then
+            python3 "${{ env.kernel_folder }}/extra/mkdtboimg.py" create "$AK3_FOLDER/dtbo.img" --custom0=0x00000000 --custom1=0x00000000 --page_size=4096 "${{ env.kernel_folder }}/${{ env.in_dtbo }}"
           fi
-
+          
+          BUILD_SUFFIX=""
           case "${{ matrix.build_type }}" in
-           KSUN)
-            BUILD="-KSUNext"
-           ;;
-           KSU)
-            BUILD="-KSU"
-           ;;
-           RKSU)
-            BUILD="-RKSU"
-           ;;
-           Normal)
-            BUILD=""
-           ;;
-           *)
-            BUILD=""
-            echo "Invalid selection for build_type: ${{ matrix.build_type }}"
-           ;;
+            KSUN) BUILD_SUFFIX="-KSUNext" ;;
+            KSU) BUILD_SUFFIX="-KSU" ;;
+            RKSU) BUILD_SUFFIX="-RKSU" ;;
           esac
-
+          
           if [ "${{ matrix.susfs }}" == "true" ]; then
-            BUILD="$BUILD.SUSFS"
+            BUILD_SUFFIX="$BUILD_SUFFIX.SUSFS"
           fi
+          
+          ZIP_NAME="$(date +"%Y.%m.%d")-${{ env.device }}${BUILD_SUFFIX}-${{ matrix.kernel_config.tag }}-${{ github.run_number }}"
+          echo "anykernel_zipname=$ZIP_NAME" >> $GITHUB_ENV
+          
+          cd $AK3_FOLDER
+          zip -r9 "../${ZIP_NAME}.zip" ./* -x ".git*"
 
-
-          date="$(date +"%Y.%m.%d")"
-          zip_name="$date-${{ env.device }}$BUILD-${{ matrix.kernel_config.tag }}-${{ github.run_number }}"
-          mkdir release
-          rm -rf ak_folder/*.git*
-          cp -r ak_folder/* release
-          echo "anykernel_zipname=$zip_name" >> $GITHUB_OUTPUT
-
-      - name: Upload AnyKernel Artifacts
+      - name: Upload AnyKernel Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.anykernel.outputs.anykernel_zipname }}
-          path: |
-            ${{ env.kernel_folder }}/out/arch/arm64/boot/release/
+          name: ${{ env.anykernel_zipname }}
+          path: ${{ env.ak_folder }}/*
 
   release:
     needs: build
+    if: github.event_name != 'pull_request'
     permissions:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          path: ./downloaded-artifacts
+          path: ./artifacts
 
-      - name: Setup env variables
+      - name: Set Release Variables
+        id: release_vars
         run: |
-          get_ref() {
-            local name="$1" repo="$2" path="$3" mode="$4" head="$5"
-            if [[ "$mode" == "tag" ]]; then
-              ref=$(git ls-remote --tags --sort=-v:refname "$repo" | grep -o 'refs/tags/.*' | cut -d/ -f3 | head -n1)
-              url="https://github.com/$path/releases/tag/$ref"
-            else
-              ref=$(git ls-remote "$repo" $head | awk '{print $1}')
-              url="https://github.com/$path/commit/$ref"
-            fi
-            # echo "${name}_REF=$ref" >> $GITHUB_ENV
-            echo "${name}_URL=$url" >> $GITHUB_ENV
-          }
+          echo "date=$(date +"%d/%m/%Y")" >> $GITHUB_ENV
+          echo "tg_title=${{ github.event.inputs.scheduled == 'true' && 'A new scheduled build has been completed!' || 'A new kernel CI release has been completed!' }}" >> $GITHUB_ENV
+          echo "run_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
+          echo "nightly_url=https://nightly.link/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
+          
+          KSUN_URL=$(git ls-remote https://github.com/KernelSU-Next/KernelSU-Next.git HEAD | awk '{print "https://github.com/KernelSU-Next/KernelSU-Next/commit/"$1}')
+          RKSU_URL=$(git ls-remote https://github.com/rsuntk/KernelSU HEAD | awk '{print "https://github.com/rsuntk/KernelSU/commit/"$1}')
+          echo "KSUN_URL=$KSUN_URL" >> $GITHUB_ENV
+          echo "RKSU_URL=$RKSU_URL" >> $GITHUB_ENV
 
-          get_ref "KSUN" "https://github.com/KernelSU-Next/KernelSU-Next.git" "KernelSU-Next/KernelSU-Next" "commit" "HEAD"
+          git clone --depth=1 "https://github.com/TheSillyOk/sh"
+          echo "KSUN_V=$(./sh/get_ksuver.sh "KernelSU-Next" "KernelSU-Next" "next")" >> $GITHUB_ENV
+          echo "RKSU_V=$(./sh/get_ksuver.sh "rsuntk" "KernelSU" "main")" >> $GITHUB_ENV
 
-          get_ref "RKSU" "https://github.com/rsuntk/KernelSU" "rsuntk/KernelSU" "commit" "HEAD"
-          # get_ref "RKSU-SUSFS" "https://github.com/rsuntk/KernelSU" "rsuntk/KernelSU" "commit" "susfs-main"
-
-          # SUSFS_COMMIT_HASH=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/kernel-4.14 | awk '{ print $1 }')
-          # echo "SUSFS_COMMIT_HASH=$SUSFS_COMMIT_HASH" >> $GITHUB_ENV
-
-          echo "artifacts_dir=$PWD/downloaded-artifacts" >> $GITHUB_ENV
-
-          date="$(date +"%d/%m/%Y")"
-          echo "date=$date" >> $GITHUB_ENV
-
-          if [ "${{ inputs.scheduled }}" == "true" ]; then
-           echo "tg_title=A new scheduled build has been completed!" >> $GITHUB_ENV
-          else
-           echo "tg_title=A new kernel CI release has been completed!" >> $GITHUB_ENV
-          fi
-
-          echo "run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
-          echo "nightly_run=https://nightly.link/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
-
-          sh_dir="$PWD/sh"
-          git clone --depth=1 "https://github.com/TheSillyOk/sh" "$sh_dir"
-          echo "sh_dir=$sh_dir" >> $GITHUB_ENV
-
-          echo "KSUN_V=$(bash $sh_dir/get_ksuver.sh "KernelSU-Next" "KernelSU-Next" "next")" >> $GITHUB_ENV
-          echo "RKSU_V=$(bash $sh_dir/get_ksuver.sh "rsuntk" "KernelSU" "main")" >> $GITHUB_ENV
-
-      - name: Set release body
+      - name: Generate Release Body
+        id: release_body
         run: |
-          cat << 'EOF' > release_body.md
+          cat << EOF > release_body.md
           Kernels w/ KSU (and forks) + SUSFS by @TheSillyOk
 
           Updated: ${{ env.date }}
 
           [Updates](https://t.me/ok_kernel) • [Support](https://t.me/ok_kernel_chat) 
 
-          [Github run](${{ env.run }}) • [Nightly run](${{ env.nightly_run }})
+          [Github run](${{ env.run_url }}) • [Nightly run](${{ env.nightly_url }})
 
           [SUSFS Module](https://github.com/sidex15/ksu_module_susfs/releases)
 
@@ -499,62 +325,18 @@
           • @aleeeee1 & @PowerX-NOT & @RainySorcerer for kernel sources
           EOF
 
-      - name: Set release tag
-        env:
-         GH_TOKEN: ${{ github.token }}
-        run: |
-            gh auth setup-git
-            git clone --depth=1 "https://github.com/${{ github.repository }}" --depth=1 --branch="${{ github.ref_name }}" repo
-            cd repo
-            echo "repo_dir=$PWD" >> $GITHUB_ENV
-
-            if [ "${{ github.ref_type }}" != "tag" ]; then
-              if [[ "${{ inputs.pre_release }}" != "false" || "${{ github.ref_name }}" != "master" ]]; then
-                TAG=$(date +"%Y/%m/%d")-test
-                gh release delete "$TAG" -y || true
-              else
-                TAG=$(date +"%Y/%m/%d")-r1
-                LATEST_TAG=$(gh api repos/${{ github.repository }}/tags --jq '.[0].name')
-                BEFORE_LATEST_TAG=$(gh api repos/${{ github.repository }}/tags --jq '.[1].name')
-
-                if [[ "$LATEST_TAG" == "$TAG" && "$BEFORE_LATEST_TAG" != "$TAG"* ]]; then
-                  TAG=$(echo "$LATEST_TAG" | awk -F'-r' '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%s-r%d", $1, suffix}')
-                elif [[ "$LATEST_TAG" == "$TAG"* && "$BEFORE_LATEST_TAG" == "$TAG"* ]]; then
-                  LATEST_SUFFIX=$(echo "$LATEST_TAG" | awk -F'-r' '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%d", suffix}')
-                  BEFORE_LATEST_SUFFIX=$(echo "$BEFORE_LATEST_TAG" | awk -F'-r' '{suffix=$2; if (!suffix) suffix=0; suffix++; printf "%d", suffix}')
-                  if [ "$LATEST_SUFFIX" -gt "$BEFORE_LATEST_SUFFIX" ]; then 
-                    TAG="$TAG-r$LATEST_SUFFIX"
-                  else
-                    TAG="$TAG-r$BEFORE_LATEST_SUFFIX"
-                  fi
-                fi
-              fi
-
-              echo "Created tag: $TAG"
-              echo "TAG=$TAG" >> $GITHUB_ENV
-
-              git tag $TAG || true
-              git push origin $TAG || true
-            else
-              echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-            fi
-
-      - name: Create GitHub Release
+      - name: Create Release
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.TAG }}
-          prerelease: ${{ endsWith(env.TAG, '-test') }}
-          files: ""
-          name: ${{ env.date }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('{0}-test', env.date) }}
+          name: ${{ env.date }}
           body_path: release_body.md
+          prerelease: ${{ github.ref_name != 'master' || inputs.pre_release != 'false' }}
+          files: artifacts/*
 
-      - name: Upload Release Assets
-        env:
-         GH_TOKEN: ${{ github.token }}
-        run: |
-          bash ${{ env.sh_dir }}/upload-assets.sh "${{ env.TAG }}" "${{ env.repo_dir }}" "${{ env.artifacts_dir }}"
-
-      - name: Send Telegram Notification (CI)
+      - name: Send Telegram Notification
+        if: always()
         run: |
           curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=@ok_kernel_ci" \
@@ -562,9 +344,11 @@
             --data-urlencode "text=
             • 🔔 ${{ env.tg_title }}
             🏷️ *Branch*: ${{ github.ref_name }}
-            📌 *Tag*: ${{ env.TAG }}
+            📌 *Tag*: ${{ steps.create_release.outputs.tag_name }}
             📆 *Released*: ${{ env.date }}
-            [Release](https://github.com/${{ github.repository }}/releases/tag/${{ env.TAG }}) • [Workflow run](${{ env.run }}) • [Nightly](${{ env.nightly_run }})
+            [Release](${{ steps.create_release.outputs.html_url }}) • [Workflow run](${{ env.run_url }}) • [Nightly](${{ env.nightly_url }})
             
             • KernelSU-Next (KSUN) [${{ env.KSUN_V }}](${{ env.KSUN_URL }})
             • Rissu's KernelSU (RKSU) [${{ env.RKSU_V }}](${{ env.RKSU_URL }})"
+
+
