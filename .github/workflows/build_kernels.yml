@@ -1,5 +1,5 @@
- name: Kernel Build
- on:
+name: Kernel Build
+on:
   workflow_dispatch:
     inputs:
       pre_release:
@@ -20,24 +20,24 @@
       - 'README.md'
     branches:
       - test
- jobs:
+
+jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-     fail-fast: false
-     matrix:
-      kernel_config:
-       - kernel_name: "SM6125"
-         kernel_url: "https://github.com/LineageOS/android_kernel_google_msm-4.14"
-         anykernel_branch: "sm6125"
-         tag: "SM6125-22.2"
-         defconfig: "vendor/trinket-perf_defconfig"
-         config: "vendor/xiaomi-trinket.config vendor/laurel_sprout.config"
-         patches_folder: "sm6125"
-         IN_DTBO: "out/arch/arm64/boot/dts/xiaomi/laurel_sprout-trinket-overlay.dtbo"
-
-      build_type: ["KSUN"]
-      susfs: [true]
+      fail-fast: false
+      matrix:
+        kernel_config:
+          - kernel_name: "SM8350"
+            kernel_url: "https://github.com/MiCode/Xiaomi_Kernel_OpenSource"
+            anykernel_branch: "sm8350"
+            tag: "SM8350-aristotle"
+            defconfig: "vendor/lahaina-qgki_defconfig"
+            config: "vendor/xiaomi/aristotle.config"
+            patches_folder: "sm8350"
+            IN_DTBO: "out/arch/arm64/boot/dts/vendor/qcom/lahaina-aristotle-overlay.dtbo"
+        build_type: ["KSUN"]
+        susfs: [true]
     permissions:
       contents: write
     steps:
@@ -64,7 +64,7 @@
             fi
           }
 
-          set_config "defconfig" "vendor/laurel_sprout-perf_defconfig" "${{ matrix.kernel_config.defconfig }}"
+          set_config "defconfig" "vendor/lahaina-qgki_defconfig" "${{ matrix.kernel_config.defconfig }}"
           set_config "config" "${{ matrix.kernel_config.config }}"
 
           set_config "patches_url" "https://github.com/TheSillyOk/kernel_ls_patches" "${{ matrix.kernel_config.patches_url }}"
@@ -77,11 +77,10 @@
           set_config "kernel_branch" "" " -b ${{ matrix.kernel_config.kernel_branch }}"
 
           set_config "susfs_branch" "kernel-4.14" "${{ matrix.kernel_config.susfs_branch }}"
-          set_config "device" "MiA3" "${{ matrix.kernel_config.device }}"
+          set_config "device" "Mi11Ultra" "${{ matrix.kernel_config.device }}"
           set_config "python3" false "${{ matrix.kernel_config.python3_patch }}"
 
           set_config "IN_DTBO" "none" "${{ matrix.kernel_config.IN_DTBO }}"
-
 
       - name: Maximize Build Space
         continue-on-error: true
@@ -159,7 +158,7 @@
       - name: Set up ccache
         run: |
          ccache --version
-         ccache --max-size=3G
+         ccache --max-size=2G
          ccache --set-config=compression=true
          echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
 
@@ -313,7 +312,7 @@
           export KBUILD_BUILD_USER="Ok"
           export KBUILD_BUILD_HOST="Github"
           export PATH="${{ env.tools_folder }}/clang/bin:$PATH"
-           mkdir -p "${{ env.kernel_folder }}/out/arch/arm64/boot/dts/xiaomi/.ginkgo-trinket-overlay.dtbo.qcom-base"
+          mkdir -p "${{ env.kernel_folder }}/out/arch/arm64/boot/dts/vendor/qcom"
           mkdir -p "${{ env.kernel_folder }}/artifacts"
 
           make O="${{ env.kernel_folder }}/out" ARCH=arm64 ${{ env.defconfig }} ${{ env.config }}
@@ -372,7 +371,6 @@
             BUILD="$BUILD.SUSFS"
           fi
 
-
           date="$(date +"%Y.%m.%d")"
           zip_name="$date-${{ env.device }}$BUILD-${{ matrix.kernel_config.tag }}-${{ github.run_number }}"
           mkdir release
@@ -418,7 +416,7 @@
           get_ref "RKSU" "https://github.com/rsuntk/KernelSU" "rsuntk/KernelSU" "commit" "HEAD"
           # get_ref "RKSU-SUSFS" "https://github.com/rsuntk/KernelSU" "rsuntk/KernelSU" "commit" "susfs-main"
 
-          # SUSFS_COMMIT_HASH=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/kernel-4.14 | awk '{ print $1 }')
+          # SUSFS_COMMIT_HASH=$(git ls-remote https://gitlab.com/simonpunk/susfs4ksu.git refs/heads/kernel-5.4 | awk '{ print $1 }')
           # echo "SUSFS_COMMIT_HASH=$SUSFS_COMMIT_HASH" >> $GITHUB_ENV
 
           echo "artifacts_dir=$PWD/downloaded-artifacts" >> $GITHUB_ENV
@@ -515,7 +513,7 @@
           tag_name: ${{ env.TAG }}
           prerelease: ${{ endsWith(env.TAG, '-test') }}
           files: ""
-          name: ${{ env.date }}
+          name: ${{ env.date }}
           body_path: release_body.md
 
       - name: Upload Release Assets
@@ -538,4 +536,3 @@
             
             • KernelSU-Next (KSUN) [${{ env.KSUN_V }}](${{ env.KSUN_URL }})
             • Rissu's KernelSU (RKSU) [${{ env.RKSU_V }}](${{ env.RKSU_URL }})"
-            
